@@ -44,7 +44,7 @@
                     color="#93B954"
                     dark
                     width="80%"
-                    @click="submit(item.lpAddress)"
+                    @click="submit(item)"
                     :disabled="parseFloat(item.rewardsAmount) <= 0"
                   >
                     {{ $t("Claim") }}
@@ -137,22 +137,39 @@
 <script>
 import { validationMixin } from "vuelidate";
 import clip from "@/utils/clipboard";
-import { getContractByABI, weiToEther, toChecksumAddress } from "@/utils/web3";
-import {
-  ContractAddress
-  // WHITE_LISTS_SWITCH,
-  // WHITE_LISTS
-} from "@/constants/index";
+import { compare } from "@/filters/index";
+import { getContractByABI, weiToEther, etherToWei } from "@/utils/web3";
 // 引入合约 ABI 文件
-import AllocationFee_ABI from "@/constants/contractJson/AllocationFee_abi.json";
+import CommunityRewards_ABI from "@/constants/contractJson/CommunityRewardsApprove_abi.json";
 
 export default {
   name: "AllocationFee",
   mixins: [validationMixin],
   data: () => ({
     loading: false,
-    // LP奖励信息表
-    lpRewardInfoList: [],
+    // LP合约列表
+    lpContractList: [
+      {
+        name: "USDT-ETH",
+        address: "0xd98229FF432DBcc32B2805F9D3dEaF8DAc5f864b",
+        lpAddress: "0x4daa66817F5436ed15879A3E1eBD6a5fd510131F"
+      },
+      {
+        name: "USDT-DAO",
+        address: "0x94Dc552A6d25585DAE7093681f1C33C3FE8837D5",
+        lpAddress: "0x69217cF12bD760D6eA850A128646b21F7A61EE07"
+      },
+      {
+        name: "USDT-BTC",
+        address: "0x37e51f00B3F55895034c328eAa6630e328d22cc1",
+        lpAddress: "0x3a5A8B0363717C97Fa541b51Eb3C4e062E309A9C"
+      },
+      {
+        name: "USDT-FIL",
+        address: "0x3fa1F2E69D43C0A4ABb034F445f6b878F866A3Fb",
+        lpAddress: "0xd952c06Cd22361ce5538d357B8F4F09f6F198641"
+      }
+    ],
     // 记录列表
     rewardsDataList: [],
     // 提示框
@@ -190,7 +207,6 @@ export default {
     },
     address() {
       return this.$store.state.web3.address;
-      // return "0xBdB9BD48CDCF075D66f81f083b9Ab618a0530c31";
     },
     chainId() {
       return this.$store.state.web3.chainId;
@@ -214,69 +230,36 @@ export default {
     },
     // 获取账号信息
     async getAccountAssets() {
-      // if (WHITE_LISTS_SWITCH && WHITE_LISTS.indexOf(this.address) > -1) {
-      await this.getLPRewardInfo();
       this.loading = true;
-      this.rewardsDataList = [];
       try {
-        const contract = await getContractByABI(
-          AllocationFee_ABI,
-          ContractAddress,
-          this.web3
-        );
-        if (this.lpRewardInfoList.length > 0) {
+        if (this.lpContractList.length > 0) {
+          this.rewardsDataList = [];
           this.loading = true;
-          const getResult = this.lpRewardInfoList.map(async item => {
+          const getResult = this.lpContractList.map(async item => {
+            const contract = await getContractByABI(
+              CommunityRewards_ABI,
+              item.address,
+              this.web3
+            );
             const rewardsInfo = await contract.methods
-              .queryRewardInfo(item.token)
+              .getRewardsInfoByAccount()
               .call({ from: this.address });
-            const rewardsAmount = weiToEther(rewardsInfo.amount, this.web3);
+            const rewardsAmount = weiToEther(
+              rewardsInfo.rewardsAmount,
+              this.web3
+            );
             if (parseFloat(rewardsAmount) >= 0) {
               const tempData = {
                 name: item.name,
-                lpAddress: item.token,
+                address: item.address,
+                lpAddress: item.lpAddress,
                 rewardsAmount: rewardsAmount
               };
               this.rewardsDataList.push(tempData);
             }
           });
           await Promise.all(getResult);
-          this.loading = false;
-        }
-      } catch (error) {
-        console.info(error);
-      }
-      this.loading = false;
-      // }
-    },
-    // 获取LP信息信息
-    async getLPRewardInfo() {
-      this.loading = true;
-      this.lpRewardInfoList = [];
-      try {
-        const contract = await getContractByABI(
-          AllocationFee_ABI,
-          ContractAddress,
-          this.web3
-        );
-        const lpRewardAddressList = await contract.methods
-          .getLPRewardAddressList()
-          .call();
-
-        if (lpRewardAddressList.length > 0) {
-          this.loading = true;
-          const getResult = lpRewardAddressList.map(async item => {
-            const rewardsInfo = await contract.methods
-              .getRewardInfo(item)
-              .call({ from: this.address });
-            const tempData = {
-              name: rewardsInfo.name,
-              token: rewardsInfo.token,
-              amount: weiToEther(rewardsInfo.amount, this.web3)
-            };
-            this.lpRewardInfoList.push(tempData);
-          });
-          await Promise.all(getResult);
+          this.rewardsDataList.sort(compare("address"));
           this.loading = false;
         }
       } catch (error) {
@@ -285,11 +268,13 @@ export default {
       this.loading = false;
     },
     // 提币 TODO OK
-    submit(lpAddress) {
+    submit(record) {
       this.loading = true;
+      // 处理额度
+      const rewardsAmount = etherToWei(record.rewardsAmount, this.web3);
       // 执行合约
-      getContractByABI(AllocationFee_ABI, ContractAddress, this.web3)
-        .methods.getReward(toChecksumAddress(lpAddress))
+      getContractByABI(CommunityRewards_ABI, record.address, this.web3)
+        .methods.getReward(rewardsAmount)
         .send({ from: this.address })
         .then(() => {
           this.loading = false;
