@@ -12,7 +12,8 @@
                 {{ $t("LP List") }}
               </span>
             </v-card-title>
-            <v-card-text v-if="chainId === 56 && rewardsDataList.length > 0">
+            <!-- <v-card-text v-if="chainId === 56 && rewardsDataList.length > 0"> -->
+            <v-card-text v-if="rewardsDataList.length > 0">
               <v-card
                 v-for="item in rewardsDataList"
                 :key="item.address"
@@ -144,7 +145,7 @@ import {
   // WHITE_LISTS
 } from "@/constants/index";
 // 引入合约 ABI 文件
-import AllocationFee_ABI from "@/constants/contractJson/AllocationFee_abi.json";
+import AllocationFee_ABI from "@/constants/contractJson/AllocationFeeCommon_abi.json";
 
 export default {
   name: "AllocationFee",
@@ -190,7 +191,7 @@ export default {
     },
     address() {
       return this.$store.state.web3.address;
-      // return "0xBdB9BD48CDCF075D66f81f083b9Ab618a0530c31";
+      // return "0x415854D1459755Fa8ef1Bb1c723434C2DBcB8798";
     },
     chainId() {
       return this.$store.state.web3.chainId;
