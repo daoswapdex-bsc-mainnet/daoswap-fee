@@ -1,5 +1,6 @@
 // export const ContractAddress = "0x8D1F2C2E584c110b342d8538042a500444B7d9E6"; // test address
-export const ContractAddress = "0x2f5E67832E325A9652E39efFc0567488C4E65710";
+// export const ContractAddress = "0x2f5E67832E325A9652E39efFc0567488C4E65710"; // 第5期
+export const ContractAddress = "0xA1f755cA3b864B1E73c46d06D26E5d04b08b1C8a"; // 第6期
 
 export const DAOAddress = "0xc096332CAacF00319703558988aD03eC6586e704";
 export const ZeroAddress = "0x0000000000000000000000000000000000000000";
